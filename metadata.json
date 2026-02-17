@@ -1,0 +1,9 @@
+{
+  "name": "Gemini Pulse",
+  "description": "An AI-driven task automation and news briefing assistant with persistent scheduling and iOS-optimized UI.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone",
+    "geolocation"
+  ]
+}
