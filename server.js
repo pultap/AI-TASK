@@ -4,6 +4,8 @@ const fs = require('fs');
 const path = require('path');
 const axios = require('axios');
 const cors = require('cors');
+// Load environment variables from .env file
+require('dotenv').config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -20,18 +22,31 @@ if (!fs.existsSync(TASKS_FILE)) {
 
 // Task API
 app.get('/api/tasks', (req, res) => {
-    const tasks = JSON.parse(fs.readFileSync(TASKS_FILE));
-    res.json(tasks);
+    try {
+        const tasks = JSON.parse(fs.readFileSync(TASKS_FILE, 'utf8'));
+        res.json(tasks);
+    } catch (e) {
+        res.json([]);
+    }
 });
 
 app.post('/api/tasks', (req, res) => {
-    fs.writeFileSync(TASKS_FILE, JSON.stringify(req.body, null, 2));
-    res.json({ success: true });
+    try {
+        fs.writeFileSync(TASKS_FILE, JSON.stringify(req.body, null, 2));
+        res.json({ success: true });
+    } catch (e) {
+        res.status(500).json({ error: "Failed to save tasks" });
+    }
 });
 
 // Gemini Proxy - Handles the connection for restricted networks
 app.post('/api/proxy-gemini', async (req, res) => {
     const apiKey = process.env.API_KEY;
+    
+    if (!apiKey) {
+        return res.status(500).json({ error: "API_KEY is not configured on the server. Please check your .env file." });
+    }
+
     const { model, contents, config } = req.body;
     
     try {
@@ -42,8 +57,9 @@ app.post('/api/proxy-gemini', async (req, res) => {
         );
         res.json(response.data);
     } catch (error) {
-        console.error('Gemini Proxy Error:', error.response?.data || error.message);
-        res.status(error.response?.status || 500).json(error.response?.data || { error: 'Internal Server Error' });
+        const errorData = error.response?.data || { error: error.message };
+        console.error('Gemini Proxy Error:', JSON.stringify(errorData));
+        res.status(error.response?.status || 500).json(errorData);
     }
 });
 
@@ -53,4 +69,7 @@ app.get('*', (req, res) => {
 
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
+    if (!process.env.API_KEY) {
+        console.warn('WARNING: API_KEY is missing in environment variables!');
+    }
 });
